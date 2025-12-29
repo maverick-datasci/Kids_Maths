@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Math Wizard Pro</title>
+    <style>
+        :root {
+            --primary: #4A90E2;
+            --secondary: #50E3C2;
+            --accent: #FF6B6B;
+            --bg: #F0F4F8;
+            --font-family: 'Comic Sans MS', 'Chalkboard SE', sans-serif;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            background: white;
+            padding: 2rem;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            width: 90%;
+            max-width: 500px;
+            text-align: center;
+            border: 5px solid var(--primary);
+            position: relative;
+        }
+
+        h1 { color: var(--primary); margin-top: 0; }
+        
+        /* Sound Toggle */
+        .sound-toggle {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: #eee;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            cursor: pointer;
+            font-size: 1.2rem;
+        }
+
+        /* Controls */
+        .settings-group {
+            margin: 1rem 0;
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 10px;
+            text-align: left;
+        }
+
+        select, input[type="number"] {
+            padding: 8px;
+            font-size: 1rem;
+            border-radius: 5px;
+            border: 2px solid #ddd;
+            width: 100%;
+            box-sizing: border-box;
+            font-family: inherit;
+        }
+
+        .checkbox-group { display: flex; gap: 15px; margin-bottom: 10px; }
+        .checkbox-group label { cursor: pointer; display: flex; align-items: center; gap: 5px;}
+
+        button.action-btn {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 1.2rem;
+            border-radius: 50px;
+            cursor: pointer;
+            font-family: inherit;
+            margin: 5px;
+            transition: transform 0.1s;
+        }
+        button.action-btn:active { transform: scale(0.95); }
+        button.secondary { background-color: var(--secondary); color: #005f4e; }
+        button.accent { background-color: var(--accent); }
+
+        /* Game Elements */
+        #game-screen, #result-screen { display: none; }
+
+        .stats-bar {
+            display: flex; justify-content: space-between; margin-bottom: 2rem;
+            font-size: 1.2rem; font-weight: bold; color: #666;
+        }
+
+        .question-box { font-size: 3rem; margin: 1rem 0; font-weight: bold; color: var(--primary); }
+        
+        .timer.danger { color: var(--accent); animation: pulse 1s infinite; }
+
+        .feedback {
+            height: 30px; margin: 10px 0;
+            font-weight: bold; font-size: 1.2rem;
+        }
+        .feedback.correct { color: #2ecc71; }
+        .feedback.wrong { color: var(--accent); }
+
+        .answer-input {
+            font-size: 2rem !important; text-align: center; width: 150px !important;
+            margin: 0 auto; display: block;
+        }
+
+        /* Explanation Box */
+        .explanation-box {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeeba;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+            display: none;
+            text-align: left;
+            font-size: 1rem;
+        }
+        .explanation-box strong { display: block; margin-bottom: 5px; }
+
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <button class="sound-toggle" onclick="toggleSound()" id="btn-sound">🔊</button>
+
+    <div id="start-screen">
+        <h1>🧮 Math Wizard</h1>
+        
+        <div class="settings-group">
+            <strong>1. Select Operations:</strong>
+            <div class="checkbox-group">
+                <label><input type="checkbox" id="op-add" checked> Add (+)</label>
+                <label><input type="checkbox" id="op-sub" checked> Subtract (-)</label>
+                <label><input type="checkbox" id="op-mul"> Multiply (×)</label>
+            </div>
+        </div>
+
+        <div class="settings-group">
+            <label><strong>2. Add/Subtract Range:</strong></label>
+            <select id="range-addsub">
+                <option value="10">Up to 10</option>
+                <option value="100" selected>Up to 100</option>
+                <option value="1000">Up to 1000</option>
+            </select>
+
+            <label style="margin-top: 15px;"><strong>3. Multiplication Range:</strong></label>
+            <select id="range-mul">
+                <option value="5">Tables up to 5</option>
+                <option value="12" selected>Tables up to 12</option>
+            </select>
+        </div>
+
+        <button onclick="startGame('relax')" class="action-btn secondary">☕ Relax Mode</button>
+        <button onclick="startGame('challenge')" class="action-btn accent">⚡ Challenge (60s)</button>
+    </div>
+
+    <div id="game-screen">
+        <div class="stats-bar">
+            <span>Score: <span id="score">0</span></span>
+            <span id="timer-display" style="display:none;">Time: <span id="time">60</span>s</span>
+        </div>
+
+        <div class="question-box" id="question"></div>
+        
+        <input type="number" id="answer" class="answer-input" placeholder="?" onkeydown="checkEnter(event)">
+        
+        <div id="feedback" class="feedback"></div>
+
+        <div id="explanation" class="explanation-box"></div>
+        
+        <button onclick="checkAnswer()" id="btn-check" class="action-btn">Check Answer</button>
+        <button onclick="nextQuestion()" id="btn-next" class="action-btn secondary" style="display:none;">Next Question ➜</button>
+        
+        <br>
+        <button onclick="endGame()" style="background:none; border:none; text-decoration:underline; color:#999; margin-top:20px; cursor:pointer;">Quit Game</button>
+    </div>
+
+    <div id="result-screen">
+        <h1>Game Over!</h1>
+        <h2>Final Score: <span id="final-score">0</span></h2>
+        <button onclick="location.reload()" class="action-btn">Play Again 🔄</button>
+    </div>
+</div>
+
+<script>
+    // --- Audio Logic ---
+    let soundEnabled = true;
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    function toggleSound() {
+        soundEnabled = !soundEnabled;
+        document.getElementById('btn-sound').innerText = soundEnabled ? '🔊' : '🔇';
+    }
+
+    function playTone(type) {
+        if (!soundEnabled) return;
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        if (type === 'correct') {
+            // High pitched pleasant ding
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(500, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(1000, audioCtx.currentTime + 0.1);
+            gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.5);
+        } else if (type === 'wrong') {
+            // Low pitched buzzer
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+            osc.frequency.linearRampToValueAtTime(100, audioCtx.currentTime + 0.3);
+            gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.3);
+        }
+    }
+
+    // --- Game Logic ---
+    let currentAnswer = 0;
+    let currentNum1 = 0;
+    let currentNum2 = 0;
+    let currentOp = '';
+    let score = 0;
+    let timeLeft = 60;
+    let timerInterval;
+    let gameActive = false;
+    let wrongAttempts = 0; // Counter for incorrect guesses
+
+    // Elements
+    const elStart = document.getElementById('start-screen');
+    const elGame = document.getElementById('game-screen');
+    const elResult = document.getElementById('result-screen');
+    const elQuestion = document.getElementById('question');
+    const elInput = document.getElementById('answer');
+    const elFeedback = document.getElementById('feedback');
+    const elExplain = document.getElementById('explanation');
+    const btnCheck = document.getElementById('btn-check');
+    const btnNext = document.getElementById('btn-next');
+
+    function startGame(mode) {
+        const add = document.getElementById('op-add').checked;
+        const sub = document.getElementById('op-sub').checked;
+        const mul = document.getElementById('op-mul').checked;
+
+        if (!add && !sub && !mul) {
+            alert("Please select at least one operation!");
+            return;
+        }
+
+        score = 0;
+        document.getElementById('score').innerText = score;
+        elStart.style.display = 'none';
+        elGame.style.display = 'block';
+        gameActive = true;
+
+        if (mode === 'challenge') {
+            timeLeft = 60;
+            document.getElementById('timer-display').style.display = 'block';
+            startTimer();
+        } else {
+            document.getElementById('timer-display').style.display = 'none';
+        }
+
+        generateQuestion();
+    }
+
+    function startTimer() {
+        timerInterval = setInterval(() => {
+            timeLeft--;
+            document.getElementById('time').innerText = timeLeft;
+            if (timeLeft <= 10) document.getElementById('timer-display').classList.add('danger');
+            if (timeLeft <= 0) endGame();
+        }, 1000);
+    }
+
+    function generateQuestion() {
+        // Reset per question
+        wrongAttempts = 0;
+        elInput.value = '';
+        elInput.disabled = false;
+        elInput.focus();
+        elFeedback.innerText = '';
+        elExplain.style.display = 'none';
+        btnCheck.style.display = 'inline-block';
+        btnNext.style.display = 'none';
+
+        const useAdd = document.getElementById('op-add').checked;
+        const useSub = document.getElementById('op-sub').checked;
+        const useMul = document.getElementById('op-mul').checked;
+        const rangeAddSub = parseInt(document.getElementById('range-addsub').value);
+        const rangeMul = parseInt(document.getElementById('range-mul').value);
+
+        let ops = [];
+        if (useAdd) ops.push('+');
+        if (useSub) ops.push('-');
+        if (useMul) ops.push('×');
+        
+        currentOp = ops[Math.floor(Math.random() * ops.length)];
+
+        if (currentOp === '×') {
+            currentNum1 = Math.floor(Math.random() * rangeMul) + 1;
+            currentNum2 = Math.floor(Math.random() * 12) + 1; // Standard table height
+            currentAnswer = currentNum1 * currentNum2;
+        } else {
+            currentNum1 = Math.floor(Math.random() * rangeAddSub) + 1;
+            currentNum2 = Math.floor(Math.random() * rangeAddSub) + 1;
+            
+            if (currentOp === '-') {
+                if (currentNum1 < currentNum2) [currentNum1, currentNum2] = [currentNum2, currentNum1];
+                currentAnswer = currentNum1 - currentNum2;
+            } else {
+                currentAnswer = currentNum1 + currentNum2;
+            }
+        }
+
+        elQuestion.innerText = `${currentNum1} ${currentOp} ${currentNum2} = ?`;
+    }
+
+    function showExplanation() {
+        elExplain.style.display = 'block';
+        let text = `<strong>Let's break it down:</strong>`;
+
+        if (currentOp === '+') {
+            text += `Start with the number <b>${currentNum1}</b>.<br>Count up <b>${currentNum2}</b> more steps.<br>${currentNum1} + ${currentNum2} makes <b>${currentAnswer}</b>.`;
+        } else if (currentOp === '-') {
+            text += `Start with the number <b>${currentNum1}</b>.<br>Take away <b>${currentNum2}</b>.<br>${currentNum1} - ${currentNum2} leaves <b>${currentAnswer}</b>.`;
+        } else if (currentOp === '×') {
+            text += `Multiplication is repeated addition.<br><b>${currentNum1} × ${currentNum2}</b> means adding ${currentNum1} exactly ${currentNum2} times:<br>`;
+            // Generate visual addition string (limit length for UI sanity)
+            let addString = [];
+            for(let i=0; i<currentNum2; i++) addString.push(currentNum1);
+            if(addString.length > 8) {
+                text += `(${currentNum1} + ... + ${currentNum1}) = <b>${currentAnswer}</b>`;
+            } else {
+                text += `(${addString.join(' + ')}) = <b>${currentAnswer}</b>`;
+            }
+        }
+        
+        elExplain.innerHTML = text;
+        
+        // Disable input since we gave the answer
+        elInput.disabled = true;
+        btnCheck.style.display = 'none';
+        btnNext.style.display = 'inline-block';
+        btnNext.focus();
+    }
+
+    function checkAnswer() {
+        if (!gameActive) return;
+
+        const userVal = parseInt(elInput.value);
+        if (isNaN(userVal)) return;
+
+        if (userVal === currentAnswer) {
+            // CORRECT
+            playTone('correct');
+            elFeedback.innerText = "Correct! Great job! 🎉";
+            elFeedback.className = 'feedback correct';
+            score += 10;
+            document.getElementById('score').innerText = score;
+            btnCheck.style.display = 'none';
+            btnNext.style.display = 'inline-block';
+            btnNext.focus();
+        } else {
+            // WRONG
+            playTone('wrong');
+            wrongAttempts++;
+            elInput.value = '';
+            elInput.focus();
+            
+            if (wrongAttempts >= 3) {
+                elFeedback.innerText = "Let's learn how to solve this one! 👇";
+                elFeedback.className = 'feedback';
+                showExplanation();
+            } else {
+                elFeedback.innerText = `Wrong! (${3 - wrongAttempts} tries left) ❌`;
+                elFeedback.className = 'feedback wrong';
+            }
+        }
+    }
+
+    function nextQuestion() {
+        generateQuestion();
+    }
+
+    function checkEnter(event) {
+        if (event.key === "Enter") {
+            if (btnNext.style.display === 'none') checkAnswer();
+            else nextQuestion();
+        }
+    }
+
+    function endGame() {
+        gameActive = false;
+        clearInterval(timerInterval);
+        elGame.style.display = 'none';
+        elResult.style.display = 'block';
+        document.getElementById('final-score').innerText = score;
+    }
+</script>
+
+</body>
+</html>
